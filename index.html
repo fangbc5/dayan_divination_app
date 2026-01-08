@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大衍筮法</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="main-container">
+        <!-- 左侧：规则说明 -->
+        <aside class="sidebar left-sidebar">
+            <div class="sidebar-content">
+                <h2>大衍筮法规则</h2>
+                <div class="rule-section">
+                    <h3>📖 基本介绍</h3>
+                    <p>大衍筮法是《周易》中最古老的占卜方法，使用50根蓍草进行演算，通过"三变"生成一爻，共需生成六爻组成一卦。</p>
+                </div>
+                
+                <div class="rule-section">
+                    <h3>🔢 演算步骤</h3>
+                    <ol class="rule-steps">
+                        <li><strong>初始：</strong>准备50根蓍草</li>
+                        <li><strong>第一变：</strong>
+                            <ul>
+                                <li>取出一根（象征太极），剩余49根</li>
+                                <li>随意分为左右两堆</li>
+                                <li>从右堆取出一根（象征三才）</li>
+                                <li>左右两堆分别以四根为一组计数</li>
+                                <li>余数相加，得到4或8</li>
+                            </ul>
+                        </li>
+                        <li><strong>第二变：</strong>用剩余的蓍草重复第一变的步骤</li>
+                        <li><strong>第三变：</strong>再次用剩余的蓍草重复步骤</li>
+                        <li><strong>确定爻：</strong>根据三变的余数总和确定爻的类型
+                            <ul>
+                                <li>总和12（4+4+4）：老阳（阳爻变）</li>
+                                <li>总和16（两4一8）：少阴（阴爻不变）</li>
+                                <li>总和20（一4两8）：少阳（阳爻不变）</li>
+                                <li>总和24（8+8+8）：老阴（阴爻变）</li>
+                            </ul>
+                        </li>
+                        <li><strong>生成卦：</strong>重复以上过程六次，生成六爻组成一卦</li>
+                    </ol>
+                </div>
+                
+                <div class="rule-section">
+                    <h3>⚡ 变爻说明</h3>
+                    <p>如果出现老阳（9）或老阴（6），该爻为变爻。变爻会改变阴阳，形成"之卦"（变卦）。</p>
+                </div>
+                
+                <div class="rule-section">
+                    <h3>📚 卦象解读</h3>
+                    <p>每个卦象都有卦辞和六条爻辞，分别对应初爻到上爻。变爻的爻辞尤为重要，需要重点参考。</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 中间：主要内容 -->
+        <main class="main-content">
+            <div class="content-wrapper">
+                <h1>大衍筮法</h1>
+                <div class="controls">
+                    <button id="divineButton">开始占卜</button>
+                    <div class="speed-control">
+                        <label class="speed-label">动画速度：</label>
+                        <div class="speed-options">
+                            <button class="speed-btn active" data-speed="1">1x</button>
+                            <button class="speed-btn" data-speed="2">2x</button>
+                            <button class="speed-btn" data-speed="4">4x</button>
+                            <button class="speed-btn" data-speed="0">立即生成</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="divinationProcess" class="hidden">
+                    <h2>占卜过程演示</h2>
+                    <canvas id="divinationCanvas" width="650" height="380"></canvas>
+                    <p id="currentLineStatus"></p>
+                </div>
+
+                <div id="results" class="hidden">
+                    <div class="hexagram-section">
+                        <h2>本卦 (Initial Hexagram)</h2>
+                        <div id="initialHexagram" class="hexagram"></div>
+                        <p id="initialHexagramName" class="hexagram-name"></p>
+                        <p id="initialHexagramMeaning" class="hexagram-meaning"></p>
+                        <div class="explanation">
+                            <h3>卦辞</h3>
+                            <p id="initialGuaci"></p>
+                            <h3>爻辞</h3>
+                            <ul id="initialYaoci"></ul>
+                        </div>
+                    </div>
+
+                    <div id="changingLinesSection" class="hexagram-section hidden">
+                        <h2>变爻 (Changing Lines)</h2>
+                        <p id="changingLinesText"></p>
+                    </div>
+
+                    <div class="hexagram-section">
+                        <h2>之卦 (Resulting Hexagram)</h2>
+                        <div id="resultingHexagram" class="hexagram"></div>
+                        <p id="resultingHexagramName" class="hexagram-name"></p>
+                        <p id="resultingHexagramMeaning" class="hexagram-meaning"></p>
+                        <div class="explanation">
+                            <h3>卦辞</h3>
+                            <p id="resultingGuaci"></p>
+                            <h3>爻辞</h3>
+                            <ul id="resultingYaoci"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 右侧：步骤历史 -->
+        <aside class="sidebar right-sidebar">
+            <div class="sidebar-content">
+                <h2>推演步骤历史</h2>
+                <div id="stepHistory" class="step-history">
+                    <p class="empty-message">点击"开始占卜"查看推演步骤</p>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
