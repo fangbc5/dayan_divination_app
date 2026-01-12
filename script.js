@@ -110,8 +110,35 @@ document.addEventListener('DOMContentLoaded', () => {
         lastScrollTop = 0;
 
         try {
-            const response = await fetch('http://127.0.0.1:5000/divine');
-            const data = await response.json();
+            let data;
+            
+            // 尝试使用Python后端，如果失败则使用纯JS版本
+            try {
+                // 创建一个带超时的fetch请求
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3000); // 3秒超时
+                
+                const response = await fetch('http://127.0.0.1:5000/divine', {
+                    method: 'GET',
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    throw new Error('Backend not available');
+                }
+                
+                data = await response.json();
+                console.log('使用Python后端服务');
+            } catch (backendError) {
+                // 后端不可用，使用纯JS版本
+                console.log('Python后端不可用，使用纯JavaScript版本');
+                if (typeof performDivination === 'undefined') {
+                    throw new Error('纯JS版本未加载，请确保 hexagrams_data.js 和 divination.js 已正确加载');
+                }
+                data = performDivination();
+            }
 
             // 如果选择立即生成，跳过所有动画
             if (currentSpeed === 0) {
@@ -169,7 +196,11 @@ document.addEventListener('DOMContentLoaded', () => {
             resultsDiv.classList.remove('hidden');
         } catch (error) {
             console.error('Error fetching divination results:', error);
-            alert('占卜失败，请检查后端服务是否运行。');
+            if (error.message.includes('纯JS版本未加载')) {
+                alert('占卜失败：纯JS版本未加载。请确保 hexagrams_data.js 和 divination.js 文件存在。');
+            } else {
+                alert('占卜失败：' + error.message);
+            }
         } finally {
             divineButton.disabled = false;
             divineButton.textContent = '开始占卜';
