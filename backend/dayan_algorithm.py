@@ -1,29 +1,25 @@
-from flask import Flask, jsonify
-from flask_cors import CORS
+"""
+大衍筮法算法模块
+包含大衍筮法的核心推演逻辑
+"""
 import random
-from hexagrams_data import HEXAGRAMS_DATA
+from typing import Tuple, List, Dict
 
-app = Flask(__name__)
-CORS(app) # Enable CORS for all routes
-
-# Hexagram names, meanings, and detailed explanations (卦辞, 爻辞)
-# 爻辞的索引从0开始，对应初爻到上爻
-# 使用完整的64卦数据
-HEXAGRAMS = HEXAGRAMS_DATA.copy()
-
-# 确保所有64种二进制组合都有对应的卦象（如果没有，使用默认值）
-for i in range(64):
-    binary = format(i, '06b')
-    if binary not in HEXAGRAMS:
-        HEXAGRAMS[binary] = {
-            "name": f"卦{i+1}",
-            "meaning": "待补充",
-            "guaci": "此卦辞待补充。",
-            "yaoci": ["此爻辞待补充。"] * 6
-        }
-
-def perform_one_change(stalks, change_number):
-    """Perform one change (一变) of the Dayan method. Returns the remainder (4 or 8) and remaining stalks."""
+def perform_one_change(stalks: int, change_number: int) -> Tuple[int, int, List[str], List[Dict]]:
+    """
+    执行一变的过程
+    
+    Args:
+        stalks: 当前蓍草数量
+        change_number: 变数（1、2或3）
+    
+    Returns:
+        (change_remainder, remaining_stalks, steps, step_data)
+        change_remainder: 此变的余数（4或8）
+        remaining_stalks: 剩余蓍草数量
+        steps: 步骤文本列表
+        step_data: 结构化步骤数据列表
+    """
     steps = []
     step_data = []
     
@@ -73,8 +69,17 @@ def perform_one_change(stalks, change_number):
     
     return change_remainder, remaining_stalks, steps, step_data
 
-def get_line_value_detailed():
-    """Simulates the Dayan divination process for a single line using three changes (三变), returning detailed steps with structured data."""
+def get_line_value_detailed() -> Tuple[str, bool, List[str], List[Dict]]:
+    """
+    生成一爻的详细推演过程（三变）
+    
+    Returns:
+        (line_value, is_changing, all_steps, all_step_data)
+        line_value: 爻值（"1"表示阳爻，"0"表示阴爻）
+        is_changing: 是否为变爻
+        all_steps: 所有步骤文本列表
+        all_step_data: 所有结构化步骤数据列表
+    """
     all_steps = []
     all_step_data = []
     
@@ -135,8 +140,27 @@ def get_line_value_detailed():
 
     return line_value, is_changing, all_steps, all_step_data
 
-@app.route('/divine', methods=['GET'])
-def divine():
+def perform_divination() -> Dict:
+    """
+    执行完整的占卜（六爻）
+    
+    Returns:
+        包含本卦、之卦、变爻、推演步骤等完整数据的字典
+    """
+    from hexagrams_data import HEXAGRAMS_DATA
+    
+    # 确保所有64种二进制组合都有对应的卦象
+    HEXAGRAMS = HEXAGRAMS_DATA.copy()
+    for i in range(64):
+        binary = format(i, '06b')
+        if binary not in HEXAGRAMS:
+            HEXAGRAMS[binary] = {
+                "name": f"卦{i+1}",
+                "meaning": "待补充",
+                "guaci": "此卦辞待补充。",
+                "yaoci": ["此爻辞待补充。"] * 6
+            }
+    
     all_line_steps = []
     all_line_step_data = []  # Structured data for animation
     lines = []
@@ -164,7 +188,7 @@ def divine():
     initial_hexagram_info = HEXAGRAMS.get(initial_hexagram_binary, {"name": "未知卦", "meaning": "未知卦", "guaci": "无此卦辞。", "yaoci": ["无此爻辞。"]*6})
     resulting_hexagram_info = HEXAGRAMS.get(resulting_hexagram_binary, {"name": "未知卦", "meaning": "未知卦", "guaci": "无此卦辞。", "yaoci": ["无此爻辞。"]*6})
 
-    response = {
+    return {
         "initial_hexagram": {
             "binary": initial_hexagram_binary,
             "name": initial_hexagram_info["name"],
@@ -183,7 +207,3 @@ def divine():
         "divination_steps": all_line_steps, # Text steps for each line
         "divination_step_data": all_line_step_data  # Structured data for animation
     }
-    return jsonify(response)
-
-if __name__ == '__main__':
-    app.run(debug=True)

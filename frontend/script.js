@@ -108,8 +108,59 @@ document.addEventListener('DOMContentLoaded', () => {
     // 存储当前占卜数据和已验证的问题
     let currentDivinationData = null;
     let validatedQuestion = null;
+    
+    // 验证功能开关（默认开启）
+    let enableQuestionValidation = true;
+    
+    // 加载配置
+    async function loadConfig() {
+        try {
+            const response = await fetch('http://127.0.0.1:5000/config');
+            if (response.ok) {
+                const config = await response.json();
+                enableQuestionValidation = config.enable_question_validation !== false;
+            }
+        } catch (error) {
+            console.log('无法连接到后端，使用默认配置（验证功能开启）');
+            enableQuestionValidation = true;
+        }
+        
+        // 根据配置显示/隐藏验证相关UI
+        if (!enableQuestionValidation) {
+            // 隐藏验证按钮和提示
+            validateQuestionBtn.style.display = 'none';
+            showExamplesBtn.style.display = 'none';
+            const questionHint = document.querySelector('.question-hint');
+            if (questionHint) {
+                questionHint.style.display = 'none';
+            }
+            // 直接启用占卜按钮
+            divineButton.disabled = false;
+            divineButton.textContent = '开始占卜';
+        } else {
+            // 显示验证相关UI
+            validateQuestionBtn.style.display = 'inline-block';
+            showExamplesBtn.style.display = 'inline-block';
+            const questionHint = document.querySelector('.question-hint');
+            if (questionHint) {
+                questionHint.style.display = 'block';
+            }
+            // 初始状态禁用占卜按钮
+            divineButton.disabled = true;
+            divineButton.textContent = '开始占卜（请先验证问题）';
+        }
+    }
+    
+    // 页面加载时获取配置
+    loadConfig();
 
     divineButton.addEventListener('click', async () => {
+        // 如果验证功能开启，检查是否已验证问题
+        if (enableQuestionValidation && !validatedQuestion) {
+            showQuestionError('请先验证您的问题');
+            return;
+        }
+        
         divineButton.disabled = true;
         divineButton.textContent = '占卜中...';
         resultsDiv.classList.add('hidden');
@@ -209,8 +260,20 @@ document.addEventListener('DOMContentLoaded', () => {
             // 保存占卜数据供AI解读使用
             currentDivinationData = data;
             
-            // 隐藏提问区域（问题已验证）
-            questionSection.classList.add('hidden');
+            // 显示提问区域（显示已验证的问题，但允许查看和修改）
+            questionSection.classList.remove('hidden');
+            // 显示已验证的问题（显示当前使用的问题，但允许修改）
+            if (validatedQuestion) {
+                questionInput.value = validatedQuestion;
+            }
+            questionInput.disabled = false;  // 允许修改
+            questionInput.classList.add('valid');
+            questionInput.classList.remove('error');
+            questionError.classList.add('hidden');
+            validateQuestionBtn.disabled = false;
+            validateQuestionBtn.textContent = '验证提问';
+            resetQuestionBtn.style.display = 'inline-block';
+            
             aiInterpretationSection.classList.add('hidden');
 
             resultsDiv.classList.remove('hidden');
@@ -227,13 +290,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert('占卜失败：' + error.message);
             }
         } finally {
-            // 只有在有已验证问题的情况下才启用按钮
-            if (validatedQuestion) {
+            // 占卜完成后，根据配置决定按钮状态
+            if (enableQuestionValidation) {
+                divineButton.disabled = true;
+                divineButton.textContent = '开始占卜（请重新验证问题）';
+            } else {
                 divineButton.disabled = false;
                 divineButton.textContent = '开始占卜';
-            } else {
-                divineButton.disabled = true;
-                divineButton.textContent = '开始占卜（请先验证问题）';
             }
         }
     });
@@ -272,8 +335,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 validatedQuestion = question;
                 
                 // 启用占卜按钮
-            divineButton.disabled = false;
-            divineButton.textContent = '开始占卜';
+                divineButton.disabled = false;
+                divineButton.textContent = '开始占卜';
+                
+                // 显示"重新输入"按钮
+                resetQuestionBtn.style.display = 'inline-block';
                 
                 // 显示成功提示
                 const successMsg = document.createElement('div');
@@ -294,6 +360,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 显示AI的分析和建议
                 validatedQuestion = null;
                 divineButton.disabled = true;
+                resetQuestionBtn.style.display = 'none';
                 showQuestionErrorWithAI(result.error_message, result.ai_analysis || '');
             }
         } catch (error) {
@@ -342,6 +409,20 @@ document.addEventListener('DOMContentLoaded', () => {
         divineButton.disabled = true;
     }
 
+    // 重置问题输入
+    resetQuestionBtn.addEventListener('click', () => {
+        questionInput.value = '';
+        questionInput.disabled = false;
+        questionInput.classList.remove('valid', 'error');
+        questionError.classList.add('hidden');
+        validateQuestionBtn.disabled = false;
+        validateQuestionBtn.textContent = '验证提问';
+        resetQuestionBtn.style.display = 'none';
+        validatedQuestion = null;
+        divineButton.disabled = true;
+        divineButton.textContent = '开始占卜（请先验证问题）';
+    });
+
     // 显示提问示例
     showExamplesBtn.addEventListener('click', async () => {
         try {
@@ -381,7 +462,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 执行AI解读
+    // 执行AI解读（流式）
     async function performAIInterpretation(question) {
         if (!currentDivinationData) {
             alert('请先完成占卜');
@@ -390,10 +471,20 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // 显示AI解读区域
         aiInterpretationSection.classList.remove('hidden');
-        aiInterpretationContent.innerHTML = '<p class="loading-text">正在生成AI解读...</p>';
+        aiInterpretationContent.innerHTML = `
+            <div class="ai-interpretation-text">
+                <p class="user-question">您的问题：${question}</p>
+                <div class="interpretation-content" id="streamingContent">
+                    <span class="typing-cursor">▋</span>
+                </div>
+            </div>
+        `;
         
         // 滚动到AI解读区域
         aiInterpretationSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        
+        const streamingContent = document.getElementById('streamingContent');
+        let fullText = '';
         
         try {
             const response = await fetch('http://127.0.0.1:5000/ai/interpret', {
@@ -403,30 +494,125 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 body: JSON.stringify({
                     hexagram_name: currentDivinationData.initial_hexagram.name,
-                    hexagram_meaning: currentDivinationData.initial_hexagram.meaning,
-                    guaci: currentDivinationData.initial_hexagram.guaci,
-                    yaoci: currentDivinationData.initial_hexagram.yaoci,
                     changing_lines: currentDivinationData.changing_lines,
-                    question: question
+                    question: question,
+                    resulting_hexagram_name: currentDivinationData.resulting_hexagram.name
                 })
             });
             
-            const result = await response.json();
+            // 检查是否是流式响应
+            const contentType = response.headers.get('content-type');
+            console.log('[Stream] Content-Type:', contentType);
             
-            if (result.success) {
-                aiInterpretationContent.innerHTML = `
-                    <div class="ai-interpretation-text">
-                        <p class="user-question">您的问题：${question}</p>
-                        <div class="interpretation-content">${result.interpretation.replace(/\n/g, '<br>')}</div>
-                    </div>
-                `;
+            if (contentType && contentType.includes('text/event-stream')) {
+                // 流式响应处理
+                console.log('[Stream] 开始接收流式响应');
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                let chunkCount = 0;
+                const startTime = Date.now();
+                let firstChunkTime = null;
+                
+                // 使用 requestAnimationFrame 来批量更新DOM，提高性能
+                let pendingUpdate = false;
+                let lastUpdateTime = 0;
+                const UPDATE_INTERVAL = 16; // 约60fps
+                
+                const updateDisplay = () => {
+                    if (fullText) {
+                        streamingContent.innerHTML = fullText.replace(/\n/g, '<br>') + '<span class="typing-cursor">▋</span>';
+                        // 自动滚动到底部（使用更平滑的方式）
+                        const container = streamingContent.parentElement;
+                        if (container) {
+                            container.scrollTop = container.scrollHeight;
+                        }
+                    }
+                    pendingUpdate = false;
+                };
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) {
+                        console.log(`[Stream] 流式响应完成，共接收 ${chunkCount} 个chunk`);
+                        break;
+                    }
+                    
+                    const chunkData = decoder.decode(value, { stream: true });
+                    buffer += chunkData;
+                    const lines = buffer.split('\n\n');
+                    buffer = lines.pop() || ''; // 保留最后一个不完整的行
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                
+                                if (data.type === 'start') {
+                                    // 开始接收
+                                    console.log('[Stream] 收到开始信号');
+                                    streamingContent.innerHTML = '<span class="typing-cursor">▋</span>';
+                                    fullText = '';
+                                    firstChunkTime = Date.now();
+                                } else if (data.type === 'chunk') {
+                                    // 接收内容块
+                                    chunkCount++;
+                                    if (!firstChunkTime) {
+                                        firstChunkTime = Date.now();
+                                        const delay = firstChunkTime - startTime;
+                                        console.log(`[Stream] 第一个chunk在 ${delay}ms 后到达`);
+                                    }
+                                    
+                                    fullText += data.content;
+                                    
+                                    // 使用节流更新DOM，避免过于频繁的更新
+                                    const now = Date.now();
+                                    if (!pendingUpdate && (now - lastUpdateTime >= UPDATE_INTERVAL)) {
+                                        updateDisplay();
+                                        lastUpdateTime = now;
+                                    } else if (!pendingUpdate) {
+                                        pendingUpdate = true;
+                                        requestAnimationFrame(() => {
+                                            updateDisplay();
+                                            lastUpdateTime = Date.now();
+                                        });
+                                    }
+                                    
+                                    // 每100个chunk输出一次调试信息
+                                    if (chunkCount % 100 === 0) {
+                                        console.log(`[Stream] 已接收 ${chunkCount} 个chunk，当前文本长度: ${fullText.length}`);
+                                    }
+                                } else if (data.type === 'end') {
+                                    // 结束，移除光标
+                                    console.log(`[Stream] 收到结束信号，总chunk数: ${chunkCount}，总耗时: ${Date.now() - startTime}ms`);
+                                    updateDisplay(); // 确保最后一次更新
+                                    streamingContent.innerHTML = fullText.replace(/\n/g, '<br>');
+                                }
+                            } catch (e) {
+                                console.error('解析SSE数据失败:', e, 'Line:', line);
+                            }
+                        }
+                    }
+                }
+                
+                // 确保所有待处理的更新都完成
+                if (pendingUpdate) {
+                    updateDisplay();
+                }
             } else {
-                aiInterpretationContent.innerHTML = `
-                    <div class="ai-error">
-                        <p>AI解读失败：${result.error}</p>
-                        ${result.ai_analysis ? `<div class="ai-analysis-content">${result.ai_analysis.replace(/\n/g, '<br>')}</div>` : ''}
-                    </div>
-                `;
+                // 非流式响应（兼容旧代码）
+                const result = await response.json();
+                
+                if (result.success) {
+                    streamingContent.innerHTML = result.interpretation.replace(/\n/g, '<br>');
+                } else {
+                    aiInterpretationContent.innerHTML = `
+                        <div class="ai-error">
+                            <p>AI解读失败：${result.error}</p>
+                            ${result.ai_analysis ? `<div class="ai-analysis-content">${result.ai_analysis.replace(/\n/g, '<br>')}</div>` : ''}
+                        </div>
+                    `;
+                }
             }
         } catch (error) {
             console.error('AI解读失败:', error);
@@ -1056,6 +1242,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 li.style.color = '#e67e22'; // Highlight changing yao ci
             }
             targetUl.appendChild(li);
-});
+        });
     }
 });
