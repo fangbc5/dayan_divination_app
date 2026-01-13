@@ -54,10 +54,7 @@ def ai_interpret():
                 # 流式发送内容
                 stream_response = result.get("response")
                 if stream_response:
-                    chunk_count = 0
-                    start_time = time.time()
                     for chunk in stream_response:
-                        chunk_count += 1
                         if chunk.choices and len(chunk.choices) > 0:
                             delta = chunk.choices[0].delta
                             if hasattr(delta, 'content') and delta.content:
@@ -65,11 +62,6 @@ def ai_interpret():
                                 chunk_data = json.dumps({'type': 'chunk', 'content': delta.content}, ensure_ascii=False)
                                 yield f"data: {chunk_data}\n\n"
                                 sys.stdout.flush()  # 强制刷新，确保立即发送
-                                
-                                # 调试信息（仅在开发环境）
-                                if Config.FLASK_DEBUG:
-                                    elapsed = time.time() - start_time
-                                    print(f"[Stream] Chunk #{chunk_count} received at {elapsed:.2f}s: {len(delta.content)} chars", flush=True)
                 
                 # 发送结束标记
                 yield f"data: {json.dumps({'type': 'end'}, ensure_ascii=False)}\n\n"
