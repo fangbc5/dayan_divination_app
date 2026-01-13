@@ -110,44 +110,102 @@ def validate_question_with_ai(question: str) -> Dict[str, Any]:
         }
     
     try:
-        prompt = f"""请评估以下用户提问是否符合《周易》算卦的要求。
+        prompt = f"""你是一位《周易》占卜专家，负责评估用户提问是否符合算卦的要求。
 
-算卦提问的要求：
-1. 必须包含明确的时间范围（如：本周、下个月、三个月内、近期等），不能过于宽泛（避免"永远"、"一直"、"未来"等）
-2. 必须包含具体的所求之事（如：工作、感情、学业、健康、财运等），不能过于宽泛（避免"一切"、"所有"、"人生"等）
-3. 问题应该具体明确，便于通过卦象给出针对性建议
+## 算卦提问的要求：
 
-用户提问：{question}
+1. **时间范围要求**：
+   - 必须包含明确的时间范围（如：本周、下个月、三个月内、近期、接下来一个月等）
+   - 避免过于宽泛的时间表达（如："永远"、"一直"、"未来"、"以后"等没有具体期限的表达）
+   - 允许的时间表达示例：本周、下周、本月、下个月、近期、三个月内、接下来一个月、未来三个月等
 
-请按照以下格式回答：
-1. 是否符合要求：是/否
-2. 如果不符合，请指出具体问题：
-   - 时间范围问题（如有）
-   - 所求之事问题（如有）
-   - 其他问题（如有）
-3. 改进建议：如果不符合，请给出具体的改进建议和示例
+2. **所求之事要求**：
+   - 必须包含具体的所求之事（如：工作、感情、学业、健康、财运、出行等）
+   - 避免过于宽泛的表达（如："一切"、"所有"、"人生"、"命运"等）
+   - 允许的表达示例：工作升职、感情发展、学业成绩、健康状况、投资理财等
 
-请用中文回答，格式清晰。"""
+3. **问题明确性**：
+   - 问题应该具体明确，便于通过卦象给出针对性建议
+   - 避免过于抽象或哲学性的问题
+
+## 用户提问：
+{question}
+
+## 请按照以下格式回答：
+
+**是否符合要求：** [是/否]
+
+**评估说明：**
+[详细说明是否符合要求，如果不符合，请指出具体问题]
+
+**改进建议：**
+[如果不符合，请给出具体的改进建议和示例]
+
+请用中文回答，判断要严格但合理。"""
         
         # 使用标准OpenAI ChatCompletion格式
-        # 优化参数以提升响应速度
         response = client.chat.completions.create(
             model=Config.ARK_MODEL,
             messages=[
+                {
+                    "role": "system",
+                    "content": "你是一位《周易》占卜专家，负责严格但合理地评估用户提问是否符合算卦要求。"
+                },
                 {
                     "role": "user",
                     "content": prompt
                 }
             ],
-            temperature=0.3,  # 较低温度，更快速、更确定性的响应
-            max_tokens=500  # 验证不需要太长回复
+            temperature=0.2,  # 较低温度，确保判断的一致性
+            max_tokens=600  # 足够的token用于详细分析
         )
         
         # 按照OpenAI标准格式提取响应
         ai_response = response.choices[0].message.content
         
-        # 简单判断是否符合要求（从AI回复中提取）
-        is_valid = "符合" in ai_response or "是" in ai_response[:50] or "符合要求：是" in ai_response
+        # 智能判断逻辑：优先查找明确的格式标记
+        is_valid = False
+        ai_response_lower = ai_response.lower()
+        
+        # 方法1：查找"是否符合要求："格式
+        if "是否符合要求：" in ai_response:
+            after_keyword = ai_response.split("是否符合要求：", 1)[1].strip()
+            # 检查后面10个字符内是否有"是"且没有"否"
+            if "是" in after_keyword[:10] and "否" not in after_keyword[:10]:
+                is_valid = True
+            elif "否" in after_keyword[:10]:
+                is_valid = False
+        
+        # 方法2：查找"是否符合要求："（中文冒号）
+        elif "是否符合要求：" in ai_response:
+            after_keyword = ai_response.split("是否符合要求：", 1)[1].strip()
+            if "是" in after_keyword[:10] and "否" not in after_keyword[:10]:
+                is_valid = True
+            elif "否" in after_keyword[:10]:
+                is_valid = False
+        
+        # 方法3：查找明确的肯定/否定表达
+        elif "符合要求：是" in ai_response or "符合要求:是" in ai_response:
+            is_valid = True
+        elif "符合要求：否" in ai_response or "符合要求:否" in ai_response:
+            is_valid = False
+        
+        # 方法4：语义分析（如果格式不明确）
+        else:
+            # 查找明确的否定表达
+            negative_keywords = ["不符合要求", "不符合", "不满足要求", "不满足", "缺少时间", "缺少所求", "过于宽泛"]
+            positive_keywords = ["符合要求", "符合", "满足要求", "满足", "可以", "合适"]
+            
+            has_negative = any(keyword in ai_response_lower[:200] for keyword in negative_keywords)
+            has_positive = any(keyword in ai_response_lower[:200] for keyword in positive_keywords)
+            
+            if has_negative and not has_positive:
+                is_valid = False
+            elif has_positive and not has_negative:
+                is_valid = True
+            else:
+                # 如果都不明确，默认判定为不符合（更严格）
+                is_valid = False
         
         return {
             "success": True,

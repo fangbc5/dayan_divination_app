@@ -158,6 +158,7 @@ def validate_question_endpoint():
         data = request.get_json()
         question = data.get('question', '')
         
+        # 基本检查：非空（这个检查保留，因为是最基本的）
         if not question:
             return jsonify({
                 "is_valid": False,
@@ -166,7 +167,7 @@ def validate_question_endpoint():
                 "use_ai": False
             }), 400
         
-        # 使用AI验证
+        # 使用AI验证（AI会进行详细的语义分析和判断）
         ai_validation = validate_question_with_ai(question)
         
         if not ai_validation.get("success", False):
@@ -177,9 +178,11 @@ def validate_question_endpoint():
                 "use_ai": True
             }), 500
         
+        # 返回AI的验证结果和分析
+        is_valid = ai_validation.get("is_valid", False)
         return jsonify({
-            "is_valid": ai_validation.get("is_valid", False),
-            "error_message": "" if ai_validation.get("is_valid", False) else "提问不符合算卦要求，请查看AI分析",
+            "is_valid": is_valid,
+            "error_message": "" if is_valid else "提问不符合算卦要求，请查看AI分析",
             "ai_analysis": ai_validation.get("ai_analysis", ""),
             "use_ai": True
         })

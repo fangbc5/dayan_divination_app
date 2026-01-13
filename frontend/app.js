@@ -506,43 +506,82 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // 显示提问示例
-    showExamplesBtn.addEventListener('click', async () => {
-        try {
-            const response = await fetch(`${API_BASE_URL}/question/examples`);
-            const data = await response.json();
+    // 查看示例按钮事件
+    if (showExamplesBtn) {
+        showExamplesBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             
-            let examplesHtml = '<div class="examples-modal"><h3>提问示例</h3><ul>';
-            data.examples.forEach(example => {
-                examplesHtml += `<li>${example}</li>`;
-            });
-            examplesHtml += '</ul><div class="guidelines">' + data.guidelines.replace(/\n/g, '<br>') + '</div></div>';
-            
-            // 创建模态框显示示例
-            const modal = document.createElement('div');
-            modal.className = 'modal-overlay';
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <span class="modal-close">&times;</span>
-                    ${examplesHtml}
-                </div>
-            `;
-            
-            document.body.appendChild(modal);
-            
-            modal.querySelector('.modal-close').addEventListener('click', () => {
-                document.body.removeChild(modal);
-            });
-            
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    document.body.removeChild(modal);
+            try {
+                console.log('点击查看示例按钮');
+                const response = await fetch(`${API_BASE_URL}/question/examples`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
-            });
-        } catch (error) {
-            console.error('获取示例失败:', error);
-            alert('获取示例失败，请检查后端服务是否运行');
-        }
-    });
+                
+                const data = await response.json();
+                console.log('获取示例数据:', data);
+                
+                let examplesHtml = '<div class="examples-modal"><h3>提问示例</h3><ul>';
+                if (data.examples && Array.isArray(data.examples)) {
+                    data.examples.forEach(example => {
+                        examplesHtml += `<li>${example}</li>`;
+                    });
+                }
+                examplesHtml += '</ul>';
+                
+                if (data.guidelines) {
+                    examplesHtml += '<div class="guidelines">' + data.guidelines.replace(/\n/g, '<br>') + '</div>';
+                }
+                examplesHtml += '</div>';
+                
+                // 创建模态框显示示例
+                const modal = document.createElement('div');
+                modal.className = 'modal-overlay';
+                modal.innerHTML = `
+                    <div class="modal-content">
+                        <span class="modal-close">&times;</span>
+                        ${examplesHtml}
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                // 关闭按钮事件
+                const closeBtn = modal.querySelector('.modal-close');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', () => {
+                        if (modal.parentNode) {
+                            document.body.removeChild(modal);
+                        }
+                    });
+                }
+                
+                // 点击遮罩层关闭
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        if (modal.parentNode) {
+                            document.body.removeChild(modal);
+                        }
+                    }
+                });
+                
+                // 阻止模态框内容区域的点击事件冒泡
+                const modalContent = modal.querySelector('.modal-content');
+                if (modalContent) {
+                    modalContent.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                    });
+                }
+            } catch (error) {
+                console.error('获取示例失败:', error);
+                alert('获取示例失败，请检查后端服务是否运行');
+            }
+        });
+    } else {
+        console.error('showExamplesBtn 元素未找到');
+    }
 
     // 执行AI解读（流式）
     async function performAIInterpretation(question) {
