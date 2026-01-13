@@ -1,4 +1,36 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // ========== 移动浏览器视口高度修复 ==========
+    // 解决移动浏览器地址栏/工具栏动态显示/隐藏导致的视口高度问题
+    function setViewportHeight() {
+        // 获取实际视口高度（不包括地址栏和工具栏）
+        const vh = window.innerHeight / 100;
+        // 设置CSS变量，供CSS使用
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+        console.log('Viewport height:', window.innerHeight, 'vh:', vh);
+    }
+    
+    // 初始设置
+    setViewportHeight();
+    
+    // 监听窗口大小变化（包括地址栏显示/隐藏）
+    window.addEventListener('resize', setViewportHeight);
+    window.addEventListener('orientationchange', () => {
+        // 方向改变时延迟一下，等待浏览器完成布局
+        setTimeout(setViewportHeight, 100);
+    });
+    
+    // 监听滚动事件，因为移动浏览器滚动时地址栏会隐藏
+    let ticking = false;
+    window.addEventListener('scroll', () => {
+        if (!ticking) {
+            window.requestAnimationFrame(() => {
+                setViewportHeight();
+                ticking = false;
+            });
+            ticking = true;
+        }
+    }, { passive: true });
+    
     // ========== API基础URL配置 ==========
     // 自动检测当前页面的主机和端口，如果是从文件系统打开则使用默认值
     const getApiBaseUrl = () => {
@@ -13,52 +45,81 @@ document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = getApiBaseUrl();
     console.log('API Base URL:', API_BASE_URL);
     
+    // ========== SPA页面切换功能 ==========
+    const pageViews = {
+        divine: document.getElementById('divinePage'),
+        history: document.getElementById('historyPage'),
+        rules: document.getElementById('rulesPage')
+    };
+    
+    const pageTitles = {
+        divine: '占卜',
+        history: '推演步骤历史',
+        rules: '大衍筮法规则'
+    };
+    
+    const navItems = document.querySelectorAll('.nav-item');
+    const pageTitle = document.getElementById('pageTitle');
+    
+    // 页面切换函数
+    function switchPage(pageName) {
+        // 隐藏所有页面
+        Object.values(pageViews).forEach(page => {
+            if (page) page.classList.remove('active');
+        });
+        
+        // 显示目标页面
+        if (pageViews[pageName]) {
+            pageViews[pageName].classList.add('active');
+        }
+        
+        // 更新标题
+        if (pageTitle && pageTitles[pageName]) {
+            pageTitle.textContent = pageTitles[pageName];
+        }
+        
+        // 更新导航高亮
+        navItems.forEach(item => {
+            if (item.dataset.page === pageName) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
+        
+        // 如果切换到历史页面，滚动到底部
+        if (pageName === 'history') {
+            setTimeout(() => {
+                const historyDiv = document.getElementById('stepHistory');
+                if (historyDiv && historyDiv.scrollHeight > 0) {
+                    historyDiv.scrollTop = historyDiv.scrollHeight;
+                }
+            }, 100);
+        }
+    }
+    
+    // 底部导航点击事件
+    navItems.forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            const pageName = item.dataset.page;
+            if (pageName) {
+                switchPage(pageName);
+            }
+        });
+    });
+    
+    // ========== 原有功能 ==========
     const divineButton = document.getElementById('divineButton');
     const speedButtons = document.querySelectorAll('.speed-btn');
     const divinationProcessDiv = document.getElementById('divinationProcess');
     const currentLineStatus = document.getElementById('currentLineStatus');
     const resultsDiv = document.getElementById('results');
-    const stepHistoryDiv = document.getElementById('stepHistory');
+    const stepHistoryDiv = document.getElementById('stepHistory'); // 历史页面的历史记录容器
+    const clearHistoryBtn = document.getElementById('clearHistoryBtn');
     
-    // 跟踪用户是否手动向上滚动过（离开底部）
-    let userHasScrolledUp = false;
-    let lastScrollTop = 0;
-    let expectedScrollTop = -1; // 记录程序期望的滚动位置，用于区分程序滚动和用户滚动
-    
-    // 检查是否在底部附近
-    const isNearBottom = () => {
-        const scrollHeight = stepHistoryDiv.scrollHeight;
-        const scrollTop = stepHistoryDiv.scrollTop;
-        const clientHeight = stepHistoryDiv.clientHeight;
-        return scrollHeight - scrollTop - clientHeight < 10;
-    };
-    
-    // 监听用户滚动事件
-    stepHistoryDiv.addEventListener('scroll', () => {
-        const currentScrollTop = stepHistoryDiv.scrollTop;
-        
-        // 如果是程序自动滚动（滚动位置接近期望位置），不更新 userHasScrolledUp
-        if (expectedScrollTop >= 0 && Math.abs(currentScrollTop - expectedScrollTop) < 5) {
-            expectedScrollTop = -1; // 重置标记
-            lastScrollTop = currentScrollTop;
-            // 如果滚动到底部，确保 userHasScrolledUp 为 false
-            if (isNearBottom()) {
-                userHasScrolledUp = false;
-            }
-            return;
-        }
-        
-        // 用户手动滚动
-        // 如果用户滚动到底部附近，重置标记，恢复自动跟随
-        if (isNearBottom()) {
-            userHasScrolledUp = false;
-        } else if (currentScrollTop < lastScrollTop) {
-            // 如果用户向上滚动（离开底部），标记为用户手动向上滚动
-            userHasScrolledUp = true;
-        }
-        
-        lastScrollTop = currentScrollTop;
-    });
+    // 历史记录容器引用（用于实时更新）
+    let historyPageStepHistoryDiv = stepHistoryDiv;
     
     // 当前速度倍数（0表示立即生成）
     let currentSpeed = 1;
@@ -181,11 +242,13 @@ document.addEventListener('DOMContentLoaded', () => {
         divinationProcessDiv.classList.remove('hidden');
         currentLineStatus.textContent = '';
         
-        // 清空步骤历史
-        stepHistoryDiv.innerHTML = '<p class="empty-message">正在生成推演步骤...</p>';
-        // 重置滚动状态
-        userHasScrolledUp = false;
-        lastScrollTop = 0;
+        // 清空步骤历史（SPA模式，直接清空DOM）
+        if (stepHistoryDiv) {
+            stepHistoryDiv.innerHTML = '<p class="empty-message">正在生成推演步骤...</p>';
+            if (clearHistoryBtn) {
+                clearHistoryBtn.style.display = 'none';
+            }
+        }
 
         try {
             let data;
@@ -224,7 +287,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 divinationProcessDiv.classList.add('hidden');
                 
                 // 直接显示所有步骤历史（不带动画）
-                stepHistoryDiv.innerHTML = '';
+                if (stepHistoryDiv) {
+                    stepHistoryDiv.innerHTML = '';
+                    if (clearHistoryBtn) {
+                        clearHistoryBtn.style.display = 'block';
+                    }
+                }
                 const lineNames = ['初爻', '二爻', '三爻', '四爻', '五爻', '上爻'];
                 for (let i = 0; i < data.divination_steps.length; i++) {
                     const lineSteps = data.divination_steps[i];
@@ -644,51 +712,65 @@ document.addEventListener('DOMContentLoaded', () => {
     const ctx = canvas.getContext('2d');
 
     function addStepToHistory(stepText, isTitle = false, isResult = false, isChanging = false) {
-        const stepItem = document.createElement('div');
-        stepItem.className = 'step-item';
-        
-        if (isTitle) {
-            stepItem.style.fontWeight = 'bold';
-            stepItem.style.color = '#2c3e50';
-            stepItem.style.borderLeftColor = '#34495e';
-            stepItem.style.marginBottom = '15px';
-        }
-        
-        if (isResult) {
-            stepItem.classList.add('result');
-        }
-        
-        if (isChanging) {
-            stepItem.classList.add('changing-line');
-        }
-        
-        stepItem.textContent = stepText;
-        stepHistoryDiv.appendChild(stepItem);
-        
-        // 使用 requestAnimationFrame 确保 DOM 更新后再检查滚动位置
-        requestAnimationFrame(() => {
-            // 检查是否需要自动滚动：用户没有手动向上滚动，或者已经在底部附近
-            const shouldAutoScroll = !userHasScrolledUp || isNearBottom();
-            
-            if (shouldAutoScroll) {
-                const targetScrollTop = stepHistoryDiv.scrollHeight;
-                expectedScrollTop = targetScrollTop; // 记录期望的滚动位置
-                stepHistoryDiv.scrollTop = targetScrollTop;
+        // 直接更新历史页面的DOM（SPA模式，页面不会重新加载）
+        if (historyPageStepHistoryDiv) {
+            // 如果是空消息，先清空
+            const emptyMsg = historyPageStepHistoryDiv.querySelector('.empty-message');
+            if (emptyMsg) {
+                historyPageStepHistoryDiv.innerHTML = '';
+                if (clearHistoryBtn) {
+                    clearHistoryBtn.style.display = 'block';
+                }
             }
-        });
+            
+            const stepItem = document.createElement('div');
+            stepItem.className = 'step-item';
+            
+            if (isTitle) {
+                stepItem.style.fontWeight = 'bold';
+                stepItem.style.color = '#2c3e50';
+                stepItem.style.borderLeftColor = '#34495e';
+                stepItem.style.marginBottom = '15px';
+            }
+            
+            if (isResult) {
+                stepItem.classList.add('result');
+            }
+            
+            if (isChanging) {
+                stepItem.classList.add('changing-line');
+            }
+            
+            stepItem.textContent = stepText;
+            historyPageStepHistoryDiv.appendChild(stepItem);
+            
+            // 如果历史页面当前可见，自动滚动到底部
+            if (pageViews.history && pageViews.history.classList.contains('active')) {
+                setTimeout(() => {
+                    historyPageStepHistoryDiv.scrollTop = historyPageStepHistoryDiv.scrollHeight;
+                }, 50);
+            }
+        }
     }
 
     function addSeparator() {
-        const separator = document.createElement('div');
-        separator.style.height = '10px';
-        stepHistoryDiv.appendChild(separator);
+        if (historyPageStepHistoryDiv) {
+            const separator = document.createElement('div');
+            separator.style.height = '10px';
+            historyPageStepHistoryDiv.appendChild(separator);
+        }
     }
 
     async function animateDivinationProcess(allLineSteps, allLineStepData, changingLines) {
         const lineNames = ['初爻', '二爻', '三爻', '四爻', '五爻', '上爻'];
         
         // 清空步骤历史
-        stepHistoryDiv.innerHTML = '';
+        if (stepHistoryDiv) {
+            stepHistoryDiv.innerHTML = '';
+            if (clearHistoryBtn) {
+                clearHistoryBtn.style.display = 'block';
+            }
+        }
         
         for (let i = 0; i < allLineSteps.length; i++) {
             // 添加爻标题
@@ -1230,7 +1312,7 @@ document.addEventListener('DOMContentLoaded', () => {
         targetDiv.innerHTML = ''; // Clear previous hexagram
         for (let i = 0; i < binaryString.length; i++) {
             const line = document.createElement('div');
-            line.classList.add('line');
+            line.classList.add('line'); // 使用与web版一致的类名
             if (binaryString[i] === '0') {
                 line.classList.add('yin');
             } else {
@@ -1256,6 +1338,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 li.style.color = '#e67e22'; // Highlight changing yao ci
             }
             targetUl.appendChild(li);
+        });
+    }
+    
+    // 清空历史按钮事件
+    if (clearHistoryBtn) {
+        clearHistoryBtn.addEventListener('click', () => {
+            if (confirm('确定要清空所有历史记录吗？')) {
+                if (stepHistoryDiv) {
+                    stepHistoryDiv.innerHTML = '<p class="empty-message">暂无推演步骤历史，请先进行占卜</p>';
+                    clearHistoryBtn.style.display = 'none';
+                }
+            }
         });
     }
 });

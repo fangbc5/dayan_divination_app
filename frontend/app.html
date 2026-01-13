@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>占卜</title>
+    <link rel="stylesheet" href="app.css">
+    <style>
+        /* 页面视图切换 */
+        .page-view {
+            display: none;
+        }
+        
+        .page-view.active {
+            display: block;
+        }
+        
+        /* 历史页面样式 */
+        .history-content {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+        }
+        
+        .history-content h2 {
+            font-size: 1.5em;
+            color: var(--text-color);
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid var(--accent-color);
+            text-align: center;
+        }
+        
+        #stepHistory {
+            max-height: none;
+            overflow-y: visible;
+            opacity: 1;
+            min-height: 200px;
+        }
+        
+        .history-content {
+            min-height: calc(100vh - 180px);
+        }
+        
+        /* 规则页面样式 */
+        .rules-content {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+        }
+        
+        .rules-content h2 {
+            font-size: 1.5em;
+            color: var(--text-color);
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid var(--accent-color);
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <header class="app-header">
+        <h1 class="app-title" id="pageTitle">占卜</h1>
+    </header>
+
+    <!-- 占卜页面 -->
+    <main id="divinePage" class="page-view active app-main">
+        <!-- 用户提问区域 -->
+        <section id="questionSection" class="app-section question-section">
+            <h3 class="section-title">💭 请输入您的问题</h3>
+            <div class="question-input-wrapper">
+                <textarea 
+                    id="questionInput" 
+                    class="question-input" 
+                    placeholder="例如：我想知道本周工作方面的情况"
+                    rows="3"
+                ></textarea>
+                <div class="question-hint">
+                    <span class="hint-icon">💡</span>
+                    <span class="hint-text">提问要求：必须包含时间范围（如：本周、下个月）和具体事项（如：工作、感情、学业）</span>
+                </div>
+                <div id="questionError" class="question-error hidden"></div>
+                <div class="question-actions">
+                    <button id="validateQuestionBtn" class="btn-primary">验证提问</button>
+                    <button id="showExamplesBtn" class="btn-link">查看示例</button>
+                    <button id="resetQuestionBtn" class="btn-link" style="display: none;">重新输入</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 控制区域 -->
+        <section class="app-section controls-section">
+            <button id="divineButton" class="btn-divine" disabled>开始占卜</button>
+            <div class="speed-control">
+                <label class="speed-label">动画速度：</label>
+                <div class="speed-options">
+                    <button class="speed-btn active" data-speed="1">1x</button>
+                    <button class="speed-btn" data-speed="2">2x</button>
+                    <button class="speed-btn" data-speed="4">4x</button>
+                    <button class="speed-btn" data-speed="0">立即</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 占卜过程演示 -->
+        <section id="divinationProcess" class="app-section divination-process hidden">
+            <h2 class="section-title">占卜过程演示</h2>
+            <div class="canvas-wrapper">
+                <canvas id="divinationCanvas" width="650" height="380"></canvas>
+            </div>
+            <p id="currentLineStatus" class="status-text"></p>
+        </section>
+
+        <!-- 占卜结果 -->
+        <section id="results" class="app-section results-section hidden">
+            <!-- 本卦 -->
+            <div class="hexagram-card">
+                <h2 class="card-title">本卦</h2>
+                <div id="initialHexagram" class="hexagram"></div>
+                <p id="initialHexagramName" class="hexagram-name"></p>
+                <p id="initialHexagramMeaning" class="hexagram-meaning"></p>
+                <div class="explanation">
+                    <h3>卦辞</h3>
+                    <p id="initialGuaci"></p>
+                    <h3>爻辞</h3>
+                    <ul id="initialYaoci"></ul>
+                </div>
+            </div>
+
+            <!-- 变爻 -->
+            <div id="changingLinesSection" class="hexagram-card hidden">
+                <h2 class="card-title">变爻</h2>
+                <p id="changingLinesText"></p>
+            </div>
+
+            <!-- 之卦 -->
+            <div class="hexagram-card">
+                <h2 class="card-title">之卦</h2>
+                <div id="resultingHexagram" class="hexagram"></div>
+                <p id="resultingHexagramName" class="hexagram-name"></p>
+                <p id="resultingHexagramMeaning" class="hexagram-meaning"></p>
+                <div class="explanation">
+                    <h3>卦辞</h3>
+                    <p id="resultingGuaci"></p>
+                    <h3>爻辞</h3>
+                    <ul id="resultingYaoci"></ul>
+                </div>
+            </div>
+
+            <!-- AI解读 -->
+            <div id="aiInterpretationSection" class="hexagram-card hidden">
+                <h2 class="card-title">🤖 AI智能解读</h2>
+                <div id="aiInterpretationContent" class="ai-interpretation-content">
+                    <p class="loading-text">正在生成AI解读...</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 历史页面 -->
+    <main id="historyPage" class="page-view app-main">
+        <div class="history-content">
+            <h2>推演步骤历史</h2>
+            <div id="stepHistory" class="step-history">
+                <p class="empty-message">点击"开始占卜"查看推演步骤</p>
+            </div>
+            <button id="clearHistoryBtn" class="btn-primary" style="margin-top: 20px; width: 100%; display: none;">清空历史</button>
+        </div>
+    </main>
+
+    <!-- 规则页面 -->
+    <main id="rulesPage" class="page-view app-main">
+        <div class="rules-content">
+            <h2>大衍筮法规则</h2>
+            
+            <div class="rule-section">
+                <h3>📖 基本介绍</h3>
+                <p>大衍筮法是《周易》中最古老的占卜方法，使用50根蓍草进行演算，通过"三变"生成一爻，共需生成六爻组成一卦。</p>
+            </div>
+            
+            <div class="rule-section">
+                <h3>🔢 演算步骤</h3>
+                <ol class="rule-steps">
+                    <li><strong>初始：</strong>准备50根蓍草</li>
+                    <li><strong>第一变：</strong>
+                        <ul>
+                            <li>取出一根（象征太极），剩余49根</li>
+                            <li>随意分为左右两堆</li>
+                            <li>从右堆取出一根（象征三才）</li>
+                            <li>左右两堆分别以四根为一组计数</li>
+                            <li>余数相加，得到4或8</li>
+                        </ul>
+                    </li>
+                    <li><strong>第二变：</strong>用剩余的蓍草重复第一变的步骤</li>
+                    <li><strong>第三变：</strong>再次用剩余的蓍草重复步骤</li>
+                    <li><strong>确定爻：</strong>根据三变的余数总和确定爻的类型
+                        <ul>
+                            <li>总和12（4+4+4）：老阳（阳爻变）</li>
+                            <li>总和16（两4一8）：少阴（阴爻不变）</li>
+                            <li>总和20（一4两8）：少阳（阳爻不变）</li>
+                            <li>总和24（8+8+8）：老阴（阴爻变）</li>
+                        </ul>
+                    </li>
+                    <li><strong>生成卦：</strong>重复以上过程六次，生成六爻组成一卦</li>
+                </ol>
+            </div>
+            
+            <div class="rule-section">
+                <h3>⚡ 变爻说明</h3>
+                <p>如果出现老阳（9）或老阴（6），该爻为变爻。变爻会改变阴阳，形成"之卦"（变卦）。</p>
+            </div>
+            
+            <div class="rule-section">
+                <h3>📚 卦象解读</h3>
+                <p>每个卦象都有卦辞和六条爻辞，分别对应初爻到上爻。变爻的爻辞尤为重要，需要重点参考。</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- 底部导航栏 -->
+    <nav class="app-bottom-nav">
+        <button class="nav-item active" data-page="divine">
+            <span class="nav-icon">🔮</span>
+            <span class="nav-label">占卜</span>
+        </button>
+        <button class="nav-item" data-page="history">
+            <span class="nav-icon">📜</span>
+            <span class="nav-label">历史</span>
+        </button>
+        <button class="nav-item" data-page="rules">
+            <span class="nav-icon">📖</span>
+            <span class="nav-label">规则</span>
+        </button>
+    </nav>
+
+    <!-- 64卦数据 -->
+    <script src="hexagrams_data.js"></script>
+    <!-- 大衍筮法算法（纯JS版本） -->
+    <script src="divination.js"></script>
+    <!-- 主脚本 -->
+    <script src="app.js"></script>
+</body>
+</html>

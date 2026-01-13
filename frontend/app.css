@@ -1,0 +1,850 @@
+/* 移动端App样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html {
+    height: 100%;
+    overflow: hidden; /* 防止html滚动 */
+}
+
+:root {
+    --primary-color: #667eea;
+    --secondary-color: #764ba2;
+    --accent-color: #3498db;
+    --text-color: #333;
+    --bg-color: #f5f7fa;
+    --card-bg: #ffffff;
+    --border-color: #e0e7eb;
+    --shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: var(--text-color);
+    min-height: 100vh;
+    padding: 0;
+    margin: 0;
+    overflow-x: hidden;
+    overflow-y: hidden; /* 防止body滚动，滚动由.app-main处理 */
+    /* 防止iOS Safari的弹性滚动 */
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    touch-action: pan-y; /* 允许垂直滚动 */
+}
+
+/* 顶部导航栏 */
+.app-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+    padding: 0;
+    z-index: 1000;
+    box-shadow: var(--shadow-lg);
+}
+
+.app-title {
+    font-size: 1.3em;
+    font-weight: 600;
+    margin: 0;
+    padding: 0;
+    line-height: 60px; /* 与header高度一致，确保垂直居中 */
+    text-align: center; /* 文本水平居中 */
+    width: 100%; /* 占满宽度 */
+    display: block; /* 块级元素 */
+}
+
+.menu-toggle {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+}
+
+.menu-toggle span {
+    width: 100%;
+    height: 3px;
+    background: white;
+    border-radius: 2px;
+    transition: all 0.3s;
+}
+
+/* 侧边菜单 */
+.app-sidebar {
+    position: fixed;
+    top: 0;
+    left: -100%;
+    width: 85%;
+    max-width: 320px;
+    height: 100vh;
+    background: var(--card-bg);
+    box-shadow: var(--shadow-lg);
+    z-index: 2000;
+    transition: left 0.3s ease;
+    overflow-y: auto;
+}
+
+.app-sidebar.active {
+    left: 0;
+}
+
+.sidebar-header {
+    height: 60px;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.sidebar-header h2 {
+    font-size: 1.2em;
+    margin: 0;
+}
+
+.close-menu {
+    width: 30px;
+    height: 30px;
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 2em;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+}
+
+.sidebar-content {
+    padding: 20px;
+}
+
+.rule-section {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: var(--bg-color);
+    border-radius: 12px;
+    border-left: 4px solid var(--accent-color);
+}
+
+.rule-section h3 {
+    color: var(--text-color);
+    font-size: 1.1em;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.rule-section p {
+    color: #666;
+    line-height: 1.6;
+    font-size: 0.9em;
+    margin-bottom: 8px;
+}
+
+.rule-steps {
+    color: #666;
+    line-height: 1.6;
+    font-size: 0.9em;
+    padding-left: 20px;
+}
+
+.rule-steps li {
+    margin-bottom: 10px;
+}
+
+.rule-steps ul {
+    margin-top: 8px;
+    padding-left: 20px;
+    list-style-type: disc;
+}
+
+.rule-steps ul li {
+    margin-bottom: 5px;
+    color: #777;
+}
+
+/* 遮罩层 */
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1500;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
+}
+
+.overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* 主内容区域 */
+.app-main {
+    margin-top: 60px;
+    margin-bottom: 0; /* 移除margin-bottom，底部导航栏是fixed定位 */
+    padding: 15px;
+    padding-bottom: 90px; /* 增加底部padding，确保内容不被底部导航栏遮挡 */
+    /* 使用CSS变量动态设置高度，由JavaScript计算实际视口高度 */
+    /* 解决移动浏览器地址栏/工具栏动态显示/隐藏导致的视口高度问题 */
+    height: calc(var(--vh, 1vh) * 100 - 60px - 60px);
+    min-height: calc(var(--vh, 1vh) * 100 - 60px - 60px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y; /* 允许垂直滚动 */
+    /* 确保滚动容器正确 */
+    position: relative;
+    box-sizing: border-box;
+}
+
+.app-section {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 15px;
+    box-shadow: var(--shadow);
+}
+
+.section-title {
+    font-size: 1.2em;
+    color: var(--text-color);
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+/* 提问区域 */
+.question-section {
+    background: linear-gradient(135deg, #fff9e6 0%, #ffffff 100%);
+}
+
+.question-input-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.question-input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 1em;
+    font-family: inherit;
+    resize: none;
+    min-height: 100px;
+    transition: border-color 0.3s;
+}
+
+.question-input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+.question-input.valid {
+    border-color: #27ae60;
+}
+
+.question-input.error {
+    border-color: #e74c3c;
+}
+
+.question-hint {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    font-size: 0.85em;
+    color: #666;
+}
+
+.hint-icon {
+    font-size: 1.2em;
+    flex-shrink: 0;
+}
+
+.question-error {
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 0.9em;
+    line-height: 1.5;
+}
+
+.question-error.hidden {
+    display: none;
+}
+
+.question-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* 按钮样式 */
+button {
+    border: none;
+    border-radius: 12px;
+    padding: 12px 20px;
+    font-size: 1em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-family: inherit;
+    touch-action: manipulation;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent-color) 0%, #2980b9 100%);
+    color: white;
+    flex: 1;
+    min-width: 120px;
+}
+
+.btn-primary:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+}
+
+.btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-divine {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+    font-size: 1.1em;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+.btn-divine:active {
+    transform: scale(0.98);
+}
+
+.btn-divine:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-link {
+    background: transparent;
+    color: var(--accent-color);
+    padding: 8px 12px;
+    font-size: 0.9em;
+    text-decoration: underline;
+}
+
+.btn-link:active {
+    opacity: 0.7;
+}
+
+/* 速度控制 */
+.controls-section {
+    text-align: center;
+}
+
+.speed-control {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+}
+
+.speed-label {
+    font-size: 0.9em;
+    color: #666;
+}
+
+.speed-options {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.speed-btn {
+    padding: 8px 16px;
+    background: var(--bg-color);
+    border: 2px solid var(--border-color);
+    color: var(--text-color);
+    font-size: 0.9em;
+    min-width: 60px;
+}
+
+.speed-btn.active {
+    background: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+.speed-btn:active {
+    transform: scale(0.95);
+}
+
+/* 占卜过程演示 */
+.divination-process {
+    text-align: center;
+}
+
+.canvas-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    margin: 15px 0;
+    -webkit-overflow-scrolling: touch;
+}
+
+#divinationCanvas {
+    display: block;
+    margin: 0 auto;
+    border: 2px solid var(--accent-color);
+    border-radius: 12px;
+    background-color: white;
+    box-shadow: var(--shadow);
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: 650 / 380;
+}
+
+.status-text {
+    margin-top: 15px;
+    padding: 12px;
+    background: linear-gradient(135deg, #ffffff 0%, #fff5e6 100%);
+    border-radius: 8px;
+    color: #e67e22;
+    font-weight: 600;
+    font-size: 0.95em;
+}
+
+/* 占卜结果 */
+.results-section {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.hexagram-card {
+    background: linear-gradient(135deg, #f9fbfd 0%, #ffffff 100%);
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
+}
+
+.card-title {
+    font-size: 1.3em;
+    color: var(--text-color);
+    margin-bottom: 15px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.hexagram {
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: center;
+    margin: 30px auto;
+    width: fit-content;
+    border: 3px solid #8b7355;
+    padding: 25px 20px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #faf8f3 0%, #f5f1e8 100%);
+    box-shadow: 
+        0 4px 15px rgba(0, 0, 0, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    position: relative;
+}
+
+.hexagram::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(135deg, #d4a574 0%, #8b7355 100%);
+    border-radius: 12px;
+    z-index: -1;
+    opacity: 0.3;
+}
+
+.line {
+    width: 200px;
+    height: 12px;
+    margin: 8px 0;
+    border-radius: 2px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.line.yang {
+    background: linear-gradient(90deg, #1a1a1a 0%, #2c2c2c 50%, #1a1a1a 100%);
+    box-shadow: 
+        0 2px 4px rgba(0, 0, 0, 0.2),
+        inset 0 1px 1px rgba(255, 255, 255, 0.1);
+}
+
+.line.yang::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
+    border-radius: 2px 2px 0 0;
+    pointer-events: none;
+}
+
+.line.yin {
+    background: transparent;
+    border: none;
+    height: 12px;
+    box-shadow: none;
+    position: relative;
+    display: block;
+}
+
+.line.yin::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 90px;
+    height: 12px;
+    background: linear-gradient(90deg, #1a1a1a 0%, #2c2c2c 50%, #1a1a1a 100%);
+    border-radius: 2px;
+    box-shadow: 
+        0 2px 4px rgba(0, 0, 0, 0.2),
+        inset 0 1px 1px rgba(255, 255, 255, 0.1);
+}
+
+.line.yin::after {
+    content: '';
+    position: absolute;
+    left: 110px; /* 90px (左段) + 20px (间隙) = 110px */
+    top: 0;
+    width: 90px;
+    height: 12px;
+    background: linear-gradient(90deg, #1a1a1a 0%, #2c2c2c 50%, #1a1a1a 100%);
+    border-radius: 2px;
+    box-shadow: 
+        0 2px 4px rgba(0, 0, 0, 0.2),
+        inset 0 1px 1px rgba(255, 255, 255, 0.1);
+}
+
+.line.changing {
+    box-shadow: 0 0 15px 4px rgba(255, 215, 0, 0.8);
+    animation: changingGlow 2s ease-in-out infinite;
+}
+
+/* 变爻的阴爻两段都要有发光效果 */
+.line.yin.changing::before,
+.line.yin.changing::after {
+    box-shadow: 
+        0 2px 4px rgba(0, 0, 0, 0.2),
+        inset 0 1px 1px rgba(255, 255, 255, 0.1),
+        0 0 15px 4px rgba(255, 215, 0, 0.8);
+    animation: changingGlow 2s ease-in-out infinite;
+}
+
+@keyframes changingGlow {
+    0%, 100% {
+        box-shadow: 
+            0 2px 4px rgba(0, 0, 0, 0.2),
+            inset 0 1px 1px rgba(255, 255, 255, 0.1),
+            0 0 15px 4px rgba(255, 215, 0, 0.8);
+    }
+    50% {
+        box-shadow: 
+            0 2px 4px rgba(0, 0, 0, 0.2),
+            inset 0 1px 1px rgba(255, 255, 255, 0.1),
+            0 0 25px 6px rgba(255, 215, 0, 1);
+    }
+}
+
+.hexagram-name {
+    font-size: 1.5em;
+    font-weight: 600;
+    color: var(--text-color);
+    margin: 10px 0;
+    text-align: center;
+}
+
+.hexagram-meaning {
+    font-size: 1em;
+    color: #666;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.explanation {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.explanation h3 {
+    font-size: 1.1em;
+    color: var(--text-color);
+    margin-bottom: 10px;
+}
+
+.explanation p {
+    line-height: 1.8;
+    color: #555;
+    margin-bottom: 15px;
+}
+
+.explanation ul {
+    list-style: none;
+    padding: 0;
+}
+
+.explanation ul li {
+    padding: 10px 0;
+    padding-left: 25px;
+    position: relative;
+    color: #555;
+    line-height: 1.6;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.explanation ul li:last-child {
+    border-bottom: none;
+}
+
+.explanation ul li::before {
+    content: '•';
+    position: absolute;
+    left: 10px;
+    color: var(--accent-color);
+    font-weight: bold;
+}
+
+/* AI解读 */
+.ai-interpretation-content {
+    line-height: 1.8;
+    color: #555;
+    font-size: 0.95em;
+}
+
+.typing-cursor {
+    display: inline-block;
+    width: 2px;
+    height: 1em;
+    background: var(--accent-color);
+    animation: blink 1s infinite;
+    margin-left: 2px;
+}
+
+@keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+}
+
+/* 历史记录 */
+.history-section {
+    margin-bottom: 20px;
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.toggle-icon {
+    font-size: 0.8em;
+    color: var(--accent-color);
+    transition: transform 0.3s;
+}
+
+.history-section.expanded .toggle-icon {
+    transform: rotate(180deg);
+}
+
+.step-history {
+    max-height: 0;
+    overflow: hidden;
+    margin-top: 15px;
+    opacity: 0;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+}
+
+.step-history:not(.collapsed) {
+    max-height: 500px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    opacity: 1;
+}
+
+.step-item {
+    padding: 12px;
+    margin-bottom: 10px;
+    background: var(--bg-color);
+    border-radius: 8px;
+    border-left: 4px solid var(--accent-color);
+    font-size: 0.9em;
+    line-height: 1.6;
+    color: #555;
+}
+
+.step-item.changing-line {
+    border-left-color: #f39c12;
+    background: linear-gradient(135deg, #fff5e6 0%, #ffffff 100%);
+}
+
+.step-item.result {
+    border-left-color: #27ae60;
+    background: linear-gradient(135deg, #e8f8f5 0%, #ffffff 100%);
+    font-weight: 500;
+}
+
+.empty-message {
+    text-align: center;
+    color: #999;
+    padding: 20px;
+    font-size: 0.9em;
+}
+
+/* 底部导航栏 */
+.app-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: var(--card-bg);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    z-index: 1000;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: transparent;
+    border: none;
+    color: #999;
+    font-size: 0.8em;
+    padding: 8px 20px;
+    cursor: pointer;
+    transition: color 0.3s;
+    touch-action: manipulation;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.nav-item.active {
+    color: var(--accent-color);
+}
+
+.nav-icon {
+    font-size: 1.5em;
+}
+
+.nav-label {
+    font-size: 0.85em;
+}
+
+/* 隐藏类 */
+.hidden {
+    display: none !important;
+}
+
+/* 响应式调整 */
+@media (max-width: 480px) {
+    .app-main {
+        padding: 10px;
+    }
+    
+    .app-section {
+        padding: 15px;
+        margin-bottom: 10px;
+    }
+    
+    .line {
+        width: 150px;
+    }
+    
+    .line.yin::before {
+        width: 65px;
+    }
+    
+    .line.yin::after {
+        left: 85px; /* 65px (左段) + 20px (间隙) = 85px */
+        width: 65px;
+    }
+    
+    #divinationCanvas {
+        width: 100%;
+    }
+}
+
+/* 安全区域适配（iPhone X等） */
+@supports (padding: max(0px)) {
+    .app-header {
+        height: calc(60px + env(safe-area-inset-top));
+        padding-top: env(safe-area-inset-top);
+    }
+    
+    .app-title {
+        line-height: calc(60px + env(safe-area-inset-top));
+    }
+    
+    .app-main {
+        margin-top: calc(60px + env(safe-area-inset-top));
+    }
+    
+    .rules-page,
+    .history-page {
+        margin-top: calc(60px + env(safe-area-inset-top));
+        margin-bottom: calc(60px + env(safe-area-inset-bottom));
+        height: calc(100vh - 120px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    }
+    
+    .app-bottom-nav {
+        height: calc(60px + env(safe-area-inset-bottom));
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+}

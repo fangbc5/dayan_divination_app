@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, Response, stream_with_context
+from flask import Flask, jsonify, request, Response, stream_with_context, send_from_directory, send_file
 from flask_cors import CORS
 from config import Config
 from dayan_algorithm import perform_divination
@@ -7,8 +7,13 @@ from question_validator import get_question_examples, get_question_guidelines
 import json
 import time
 import sys
+import os
 
-app = Flask(__name__)
+# 获取项目根目录
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FRONTEND_DIR = os.path.join(BASE_DIR, 'frontend')
+
+app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path='/static')
 # 配置CORS，允许前端访问
 CORS(app, origins=Config.CORS_ORIGINS)
 
@@ -194,6 +199,65 @@ def get_examples():
         "examples": get_question_examples(),
         "guidelines": get_question_guidelines()
     })
+
+# ========== 前端页面路由 ==========
+
+def is_mobile_device(user_agent):
+    """检测是否为移动设备"""
+    if not user_agent:
+        return False
+    
+    user_agent_lower = user_agent.lower()
+    mobile_keywords = [
+        'mobile', 'android', 'iphone', 'ipad', 'ipod', 
+        'blackberry', 'windows phone', 'opera mini', 
+        'tablet', 'kindle', 'silk', 'fennec'
+    ]
+    return any(keyword in user_agent_lower for keyword in mobile_keywords)
+
+@app.route('/')
+def index():
+    """自动识别设备类型并返回对应页面"""
+    user_agent = request.headers.get('User-Agent', '')
+    
+    # 检测是否为移动设备
+    if is_mobile_device(user_agent):
+        # 移动设备返回App版
+        return send_file(os.path.join(FRONTEND_DIR, 'app.html'))
+    else:
+        # 桌面设备返回Web版
+        return send_file(os.path.join(FRONTEND_DIR, 'index.html'))
+
+@app.route('/web')
+def web_page():
+    """Web版首页（桌面端）"""
+    return send_file(os.path.join(FRONTEND_DIR, 'index.html'))
+
+@app.route('/app')
+def app_page():
+    """移动端App页面"""
+    return send_file(os.path.join(FRONTEND_DIR, 'app.html'))
+
+# ========== 静态资源路由 ==========
+
+# 排除API路径，只匹配静态资源文件
+API_PATHS = ['/divine', '/ai/interpret', '/ai/chat', '/ai/status', '/config', 
+              '/question/validate', '/question/examples', '/static']
+
+@app.route('/<path:filename>')
+def serve_static(filename):
+    """提供静态文件服务（CSS、JS等）"""
+    # 排除API路径
+    request_path = f'/{filename}'
+    if any(request_path.startswith(api_path) for api_path in API_PATHS):
+        return jsonify({"error": "Not found"}), 404
+    
+    # 检查文件是否存在
+    file_path = os.path.join(FRONTEND_DIR, filename)
+    if os.path.isfile(file_path):
+        return send_from_directory(FRONTEND_DIR, filename)
+    # 如果文件不存在，返回404
+    return jsonify({"error": "File not found"}), 404
 
 if __name__ == '__main__':
     app.run(
