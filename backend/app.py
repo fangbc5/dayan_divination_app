@@ -255,8 +255,12 @@ def serve_static(filename):
     return jsonify({"error": "File not found"}), 404
 
 if __name__ == '__main__':
+    # Railway等云平台会通过PORT环境变量提供端口
+    port = int(os.getenv('PORT', Config.FLASK_PORT))
+    # 云平台通常需要监听0.0.0.0
+    host = os.getenv('HOST', Config.FLASK_HOST)
     app.run(
         debug=Config.FLASK_DEBUG,
-        host=Config.FLASK_HOST,
-        port=Config.FLASK_PORT
+        host=host,
+        port=port
     )

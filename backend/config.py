@@ -14,8 +14,8 @@ class Config:
     """应用配置类"""
     
     # Flask配置
-    FLASK_DEBUG = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
-    FLASK_HOST = os.getenv('FLASK_HOST', '127.0.0.1')
+    FLASK_DEBUG = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'  # 生产环境默认关闭调试
+    FLASK_HOST = os.getenv('FLASK_HOST', '0.0.0.0')  # 云平台需要监听0.0.0.0
     FLASK_PORT = int(os.getenv('FLASK_PORT', '5000'))
     
     # AI服务配置
